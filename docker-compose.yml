@@ -1,0 +1,1 @@
+services:\n  backend:\n    build: ./backend\n    ports: ["8000:8000"]\n    env_file: ./backend/.env\n    volumes: ["./backend/generated:/app/generated"]\n  frontend:\n    build: ./frontend\n    ports: ["5173:5173"]\n    depends_on: [backend]\n
