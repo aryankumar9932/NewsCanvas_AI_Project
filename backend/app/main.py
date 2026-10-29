@@ -46,10 +46,11 @@ async def create(p:GenerateRequest,db:Session=Depends(get_db)):
     try: sm=summarize(article,p.summary_length) if article else None
     except RuntimeError as exc: raise HTTPException(502,str(exc)) from exc
     prompt=normalize_text(p.image_prompt or make_prompt(headline,sm["summary"] if sm else None,analysis,p.style))
-    try: image_name,provider=await generate_image(prompt,headline,p.style,GENERATED_DIR,p.aspect_ratio)
+    theme = analysis.get("topic")
+    try: image_name,provider,image_notice=await generate_image(prompt,headline,p.style,GENERATED_DIR,p.aspect_ratio,theme)
     except RuntimeError as exc: raise HTTPException(502,str(exc)) from exc
     r=Generation(id=str(uuid.uuid4()),headline=headline,article_text=article or None,summary=sm["summary"] if sm else None,analysis_json=json.dumps(analysis),image_prompt=prompt,provider=provider,status="completed",image_path=image_name,created_at=datetime.now(timezone.utc))
-    db.add(r); db.commit(); db.refresh(r); out=serialize(r); out["summary_meta"]=sm; out["image_notice"]="Demo artwork - not real model inference." if provider=="demo-svg" else "AI-generated illustration; verify against source."; return out
+    db.add(r); db.commit(); db.refresh(r); out=serialize(r); out["summary_meta"]=sm; out["image_notice"]=image_notice or ("Demo artwork - not real model inference." if provider=="demo-svg" else "AI-generated illustration; verify against source."); return out
 @app.get("/api/v1/generations")
 def listing(q:str=Query(default="",max_length=200),limit:int=Query(default=50,ge=1,le=100),db:Session=Depends(get_db)):
     query=db.query(Generation)

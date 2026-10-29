@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     image_provider: str = "demo"
     hf_inference_url: str = ""
     hf_api_token: str = ""
+    pollinations_url: str = "https://image.pollinations.ai/prompt"
+    pollinations_token: str = ""
+    pollinations_model: str = "flux"
+    image_fallback_to_demo: bool = True
     max_article_chars: int = 50000
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 settings = Settings()
