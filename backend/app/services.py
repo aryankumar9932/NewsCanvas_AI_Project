@@ -14,7 +14,7 @@ def extract_keywords(text: str, limit: int = 8) -> list[str]:
     return [w for w, _ in Counter(w for w in words if w not in STOPWORDS).most_common(limit)]
 def extract_entities(text: str) -> dict:
     candidates = re.findall(r"\b(?:[A-Z][a-z]+|[A-Z]{2,})(?:\s+(?:[A-Z][a-z]+|[A-Z]{2,}))*\b", text)
-    ignored = {"The", "A", "An", "In", "On", "At", "After", "Before", "New"}
+    ignored = {"The", "A", "An", "In", "On", "At", "After", "Before", "New", "More", "This", "That", "These", "Those", "It", "He", "She", "They", "We", "Scientists", "Heavy", "Damage"}
     entities = list(dict.fromkeys(x.strip() for x in candidates if x not in ignored and len(x) > 1))
     return {"entities": entities[:12], "people": [], "organizations": [], "locations": []}
 def analyze_text(headline: str, article_text: str | None = None) -> dict:
@@ -75,15 +75,18 @@ async def fetch_article(url: str) -> str:
         result=normalize_text(" ".join(parser.parts))
         if len(result)<100: raise ValueError("Not enough readable text found; paste the article manually.")
         return result[:settings.max_article_chars]
-def demo_svg(headline: str, style: str, output_dir: Path) -> str:
+ASPECTS = {"1:1": (900, 900), "4:3": (1200, 900), "3:2": (1200, 800), "16:9": (1200, 675)}
+def demo_svg(headline: str, style: str, output_dir: Path, aspect_ratio: str = "16:9") -> str:
+    w, h = ASPECTS.get(aspect_ratio, ASPECTS["16:9"])
     output_dir.mkdir(parents=True, exist_ok=True); name=f"{uuid.uuid4().hex}.svg"
     safe=html.escape(textwrap.shorten(headline,width=72,placeholder="…"))
-    svg='''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675"><defs><linearGradient id="bg"><stop stop-color="#101b35"/><stop offset="1" stop-color="#245c68"/></linearGradient></defs><rect width="1200" height="675" fill="url(#bg)"/><circle cx="930" cy="190" r="115" fill="#f2b66d"/><path d="M0 520 L260 330 L430 480 L700 250 L1200 560 L1200 675 L0 675Z" fill="#0b1326" opacity=".8"/><text x="65" y="85" font-family="Arial" font-size="20" fill="white">DEMO ARTWORK - NOT AI INFERENCE</text><text x="65" y="550" font-family="Arial" font-size="17" fill="#b9d4dc">STYLE_PLACEHOLDER</text><text x="65" y="600" font-family="Arial" font-size="28" font-weight="bold" fill="white">HEADLINE_PLACEHOLDER</text></svg>'''
+    svg='''<svg xmlns="http://www.w3.org/2000/svg" width="W_" height="H_" viewBox="0 0 W_ H_"><defs><linearGradient id="bg"><stop stop-color="#101b35"/><stop offset="1" stop-color="#245c68"/></linearGradient></defs><rect width="W_" height="H_" fill="url(#bg)"/><circle cx="930" cy="190" r="115" fill="#f2b66d"/><path d="M0 520 L260 330 L430 480 L700 250 L1200 560 L1200 675 L0 675Z" fill="#0b1326" opacity=".8" transform="translate(0 HOFF_)"/><text x="65" y="85" font-family="Arial" font-size="20" fill="white">DEMO ARTWORK - NOT AI INFERENCE</text><text x="65" y="YS_" font-family="Arial" font-size="17" fill="#b9d4dc">STYLE_PLACEHOLDER</text><text x="65" y="YH_" font-family="Arial" font-size="28" font-weight="bold" fill="white">HEADLINE_PLACEHOLDER</text></svg>'''
     svg=svg.replace("STYLE_PLACEHOLDER",html.escape(style.upper())).replace("HEADLINE_PLACEHOLDER",safe)
+    svg=svg.replace("W_",str(w)).replace("H_",str(h)).replace("HOFF_",str(h-675)).replace("YS_",str(h-125)).replace("YH_",str(h-75))
     (output_dir/name).write_text(svg,encoding="utf-8")
     return name
-async def generate_image(prompt: str, headline: str, style: str, output_dir: Path) -> tuple[str,str]:
-    if settings.image_provider.lower()=="demo": return demo_svg(headline,style,output_dir),"demo-svg"
+async def generate_image(prompt: str, headline: str, style: str, output_dir: Path, aspect_ratio: str = "16:9") -> tuple[str,str]:
+    if settings.image_provider.lower()=="demo": return demo_svg(headline,style,output_dir,aspect_ratio),"demo-svg"
     if settings.image_provider.lower()!="huggingface": raise RuntimeError("Unsupported IMAGE_PROVIDER; use demo or huggingface.")
     if not settings.hf_inference_url: raise RuntimeError("HF_INFERENCE_URL is required for hosted inference.")
     headers={"Accept":"image/*"}
